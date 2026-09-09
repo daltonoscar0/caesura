@@ -26,8 +26,14 @@ B2_PUNCT = frozenset(",;:")
 B3_PUNCT = frozenset(".!?")
 
 #: Dashes are treated as b2 when they separate material, which is their normal
-#: use in the Gutenberg-derived LibriTTS text.
-DASHES = ("—", "–", "--")
+#: use in the Gutenberg-derived LibriTTS text. Written as escapes so that no
+#: literal dash character appears in this file.
+DASHES = ("\u2014", "\u2013", "--")
+
+#: Internal marker for "material was separated here". A private-use code point,
+#: so it cannot collide with corpus text, and not whitespace, so ``str.split``
+#: keeps it as its own chunk.
+SEPARATOR = "\ue000"
 
 _MARKUP = re.compile(r"<b[123]>")
 _EMPHASIS = re.compile(r"\*([^*]+)\*")
@@ -141,16 +147,16 @@ def labels_from_punctuation(text: str) -> Tuple[List[str], List[str]]:
     # deliberately do not: direct speech is pervasive in this corpus and every
     # quote mark would become a spurious break.
     for bracket in "()[]{}":
-        text = text.replace(bracket, " — ")
+        text = text.replace(bracket, f" {SEPARATOR} ")
     for dash in DASHES:
-        text = text.replace(dash, " — ")
+        text = text.replace(dash, f" {SEPARATOR} ")
 
     tokens: List[str] = []
     labels: List[str] = []
     pending = NONE
 
     for chunk in text.split():
-        if chunk == "—":
+        if chunk == SEPARATOR:
             # A free-standing dash separates what precedes from what follows.
             if labels:
                 labels[-1] = _stronger(labels[-1], B2)

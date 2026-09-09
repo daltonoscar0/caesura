@@ -181,9 +181,10 @@ def rule_firing_table(report) -> str:
     return "\n".join(lines)
 
 
-def emphasis_table(report, limit: int = 14) -> str:
+def emphasis_table(report, limit: int = 0) -> str:
     lines = ["| sentence | marked |", "|---|---|"]
-    for row in report["emphasis_adversarial"][:limit]:
+    rows = report["emphasis_adversarial"]
+    for row in (rows[:limit] if limit else rows):
         marks = ", ".join(f"`{t}` ({r.replace('emph_', '')})" for t, r in row["emphasis"].items())
         lines.append(f"| `{row['text']}` | {marks} |")
     return "\n".join(lines)

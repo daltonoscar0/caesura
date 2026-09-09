@@ -1,0 +1,926 @@
+{
+  "punctuation_restoration_reference": [
+    {
+      "system": "Tilk and Alumae 2016, T-BRNN-pre",
+      "test_set": "IWSLT2011 reference transcripts",
+      "comma_f1": 54.8,
+      "period_f1": 72.9,
+      "question_f1": 66.7,
+      "overall_micro_f1": 64.4
+    },
+    {
+      "system": "Alam et al. 2020, BiLSTM head on roberta-large",
+      "test_set": "IWSLT2011 reference transcripts",
+      "comma_f1": 76.3,
+      "period_f1": 88.6,
+      "question_f1": 81.9,
+      "overall_micro_f1": 82.4
+    }
+  ],
+  "results": {
+    "libritts_test": {
+      "n_utterances": 1565,
+      "n_boundaries": 90525,
+      "systems": {
+        "final_only": {
+          "b2": {
+            "p": 0.0,
+            "r": 0.0,
+            "f1": 0.0,
+            "support": 7818,
+            "predicted": 0
+          },
+          "b3": {
+            "p": 98.0,
+            "r": 28.7,
+            "f1": 44.4,
+            "support": 5348,
+            "predicted": 1565
+          },
+          "any": {
+            "p": 99.6,
+            "r": 11.8,
+            "f1": 21.2,
+            "support": 13166,
+            "predicted": 1565
+          },
+          "macro_break_f1": 22.2
+        },
+        "rules": {
+          "b2": {
+            "p": 30.8,
+            "r": 18.4,
+            "f1": 23.1,
+            "support": 7818,
+            "predicted": 4677
+          },
+          "b3": {
+            "p": 67.3,
+            "r": 33.8,
+            "f1": 45.0,
+            "support": 5348,
+            "predicted": 2682
+          },
+          "any": {
+            "p": 64.2,
+            "r": 35.9,
+            "f1": 46.1,
+            "support": 13166,
+            "predicted": 7359
+          },
+          "macro_break_f1": 34.0
+        },
+        "model": {
+          "b2": {
+            "p": 71.0,
+            "r": 61.7,
+            "f1": 66.0,
+            "support": 7818,
+            "predicted": 6800
+          },
+          "b3": {
+            "p": 78.8,
+            "r": 76.2,
+            "f1": 77.5,
+            "support": 5348,
+            "predicted": 5167
+          },
+          "any": {
+            "p": 87.3,
+            "r": 79.3,
+            "f1": 83.1,
+            "support": 13166,
+            "predicted": 11967
+          },
+          "macro_break_f1": 71.8
+        },
+        "both": {
+          "b2": {
+            "p": 52.9,
+            "r": 57.6,
+            "f1": 55.2,
+            "support": 7818,
+            "predicted": 8501
+          },
+          "b3": {
+            "p": 68.9,
+            "r": 78.5,
+            "f1": 73.4,
+            "support": 5348,
+            "predicted": 6094
+          },
+          "any": {
+            "p": 74.1,
+            "r": 82.2,
+            "f1": 77.9,
+            "support": 13166,
+            "predicted": 14595
+          },
+          "macro_break_f1": 64.3
+        }
+      }
+    },
+    "switchboard": {
+      "n_utterances": 500,
+      "n_boundaries": 5537,
+      "systems": {
+        "final_only": {
+          "b2": {
+            "p": 0.0,
+            "r": 0.0,
+            "f1": 0.0,
+            "support": 264,
+            "predicted": 0
+          },
+          "b3": {
+            "p": 100.0,
+            "r": 98.8,
+            "f1": 99.4,
+            "support": 506,
+            "predicted": 500
+          },
+          "any": {
+            "p": 100.0,
+            "r": 64.9,
+            "f1": 78.7,
+            "support": 770,
+            "predicted": 500
+          },
+          "macro_break_f1": 49.7
+        },
+        "rules": {
+          "b2": {
+            "p": 21.1,
+            "r": 15.2,
+            "f1": 17.6,
+            "support": 264,
+            "predicted": 190
+          },
+          "b3": {
+            "p": 97.5,
+            "r": 98.8,
+            "f1": 98.1,
+            "support": 506,
+            "predicted": 513
+          },
+          "any": {
+            "p": 77.5,
+            "r": 70.8,
+            "f1": 74.0,
+            "support": 770,
+            "predicted": 703
+          },
+          "macro_break_f1": 57.8
+        },
+        "model": {
+          "b2": {
+            "p": 48.3,
+            "r": 26.5,
+            "f1": 34.2,
+            "support": 264,
+            "predicted": 145
+          },
+          "b3": {
+            "p": 91.9,
+            "r": 99.0,
+            "f1": 95.3,
+            "support": 506,
+            "predicted": 545
+          },
+          "any": {
+            "p": 86.1,
+            "r": 77.1,
+            "f1": 81.4,
+            "support": 770,
+            "predicted": 690
+          },
+          "macro_break_f1": 64.8
+        },
+        "both": {
+          "b2": {
+            "p": 29.1,
+            "r": 31.4,
+            "f1": 30.2,
+            "support": 264,
+            "predicted": 285
+          },
+          "b3": {
+            "p": 89.9,
+            "r": 99.0,
+            "f1": 94.3,
+            "support": 506,
+            "predicted": 557
+          },
+          "any": {
+            "p": 72.4,
+            "r": 79.2,
+            "f1": 75.7,
+            "support": 770,
+            "predicted": 842
+          },
+          "macro_break_f1": 62.2
+        }
+      }
+    },
+    "adversarial": {
+      "n_utterances": 60,
+      "n_boundaries": 566,
+      "systems": {
+        "final_only": {
+          "b2": {
+            "p": 0.0,
+            "r": 0.0,
+            "f1": 0.0,
+            "support": 63,
+            "predicted": 0
+          },
+          "b3": {
+            "p": 100.0,
+            "r": 96.8,
+            "f1": 98.4,
+            "support": 62,
+            "predicted": 60
+          },
+          "any": {
+            "p": 100.0,
+            "r": 48.0,
+            "f1": 64.9,
+            "support": 125,
+            "predicted": 60
+          },
+          "macro_break_f1": 49.2
+        },
+        "rules": {
+          "b2": {
+            "p": 61.8,
+            "r": 54.0,
+            "f1": 57.6,
+            "support": 63,
+            "predicted": 55
+          },
+          "b3": {
+            "p": 100.0,
+            "r": 98.4,
+            "f1": 99.2,
+            "support": 62,
+            "predicted": 61
+          },
+          "any": {
+            "p": 81.9,
+            "r": 76.0,
+            "f1": 78.8,
+            "support": 125,
+            "predicted": 116
+          },
+          "macro_break_f1": 78.4
+        },
+        "model": {
+          "b2": {
+            "p": 84.6,
+            "r": 17.5,
+            "f1": 28.9,
+            "support": 63,
+            "predicted": 13
+          },
+          "b3": {
+            "p": 96.8,
+            "r": 96.8,
+            "f1": 96.8,
+            "support": 62,
+            "predicted": 62
+          },
+          "any": {
+            "p": 100.0,
+            "r": 60.0,
+            "f1": 75.0,
+            "support": 125,
+            "predicted": 75
+          },
+          "macro_break_f1": 62.8
+        },
+        "both": {
+          "b2": {
+            "p": 62.7,
+            "r": 58.7,
+            "f1": 60.7,
+            "support": 63,
+            "predicted": 59
+          },
+          "b3": {
+            "p": 96.8,
+            "r": 98.4,
+            "f1": 97.6,
+            "support": 62,
+            "predicted": 63
+          },
+          "any": {
+            "p": 82.8,
+            "r": 80.8,
+            "f1": 81.8,
+            "support": 125,
+            "predicted": 122
+          },
+          "macro_break_f1": 79.2
+        }
+      }
+    }
+  },
+  "error_taxonomy": {
+    "final_only": {
+      "appositive": {
+        "gold_breaks": 23,
+        "missed": 15,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 0
+      },
+      "coordination": {
+        "gold_breaks": 14,
+        "missed": 6,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 3
+      },
+      "fronted_pp": {
+        "gold_breaks": 16,
+        "missed": 8,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 0
+      },
+      "long_subject": {
+        "gold_breaks": 16,
+        "missed": 8,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 0
+      },
+      "non_punctuation_break": {
+        "gold_breaks": 20,
+        "missed": 10,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 0
+      },
+      "np_z": {
+        "gold_breaks": 16,
+        "missed": 8,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 0
+      },
+      "reduced_relative": {
+        "gold_breaks": 20,
+        "missed": 10,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 0
+      }
+    },
+    "rules": {
+      "appositive": {
+        "gold_breaks": 23,
+        "missed": 6,
+        "wrong_level": 0,
+        "spurious": 2,
+        "exact_sentences": 2
+      },
+      "coordination": {
+        "gold_breaks": 14,
+        "missed": 2,
+        "wrong_level": 0,
+        "spurious": 2,
+        "exact_sentences": 5
+      },
+      "fronted_pp": {
+        "gold_breaks": 16,
+        "missed": 3,
+        "wrong_level": 0,
+        "spurious": 3,
+        "exact_sentences": 5
+      },
+      "long_subject": {
+        "gold_breaks": 16,
+        "missed": 1,
+        "wrong_level": 0,
+        "spurious": 3,
+        "exact_sentences": 5
+      },
+      "non_punctuation_break": {
+        "gold_breaks": 20,
+        "missed": 3,
+        "wrong_level": 0,
+        "spurious": 2,
+        "exact_sentences": 5
+      },
+      "np_z": {
+        "gold_breaks": 16,
+        "missed": 8,
+        "wrong_level": 0,
+        "spurious": 7,
+        "exact_sentences": 0
+      },
+      "reduced_relative": {
+        "gold_breaks": 20,
+        "missed": 7,
+        "wrong_level": 0,
+        "spurious": 2,
+        "exact_sentences": 1
+      }
+    },
+    "model": {
+      "appositive": {
+        "gold_breaks": 23,
+        "missed": 6,
+        "wrong_level": 2,
+        "spurious": 0,
+        "exact_sentences": 2
+      },
+      "coordination": {
+        "gold_breaks": 14,
+        "missed": 4,
+        "wrong_level": 2,
+        "spurious": 0,
+        "exact_sentences": 3
+      },
+      "fronted_pp": {
+        "gold_breaks": 16,
+        "missed": 7,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 1
+      },
+      "long_subject": {
+        "gold_breaks": 16,
+        "missed": 8,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 0
+      },
+      "non_punctuation_break": {
+        "gold_breaks": 20,
+        "missed": 10,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 0
+      },
+      "np_z": {
+        "gold_breaks": 16,
+        "missed": 6,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 2
+      },
+      "reduced_relative": {
+        "gold_breaks": 20,
+        "missed": 9,
+        "wrong_level": 0,
+        "spurious": 0,
+        "exact_sentences": 1
+      }
+    },
+    "both": {
+      "appositive": {
+        "gold_breaks": 23,
+        "missed": 3,
+        "wrong_level": 2,
+        "spurious": 2,
+        "exact_sentences": 3
+      },
+      "coordination": {
+        "gold_breaks": 14,
+        "missed": 1,
+        "wrong_level": 1,
+        "spurious": 2,
+        "exact_sentences": 5
+      },
+      "fronted_pp": {
+        "gold_breaks": 16,
+        "missed": 3,
+        "wrong_level": 0,
+        "spurious": 3,
+        "exact_sentences": 5
+      },
+      "long_subject": {
+        "gold_breaks": 16,
+        "missed": 1,
+        "wrong_level": 0,
+        "spurious": 3,
+        "exact_sentences": 5
+      },
+      "non_punctuation_break": {
+        "gold_breaks": 20,
+        "missed": 3,
+        "wrong_level": 0,
+        "spurious": 2,
+        "exact_sentences": 5
+      },
+      "np_z": {
+        "gold_breaks": 16,
+        "missed": 6,
+        "wrong_level": 0,
+        "spurious": 7,
+        "exact_sentences": 1
+      },
+      "reduced_relative": {
+        "gold_breaks": 20,
+        "missed": 7,
+        "wrong_level": 0,
+        "spurious": 2,
+        "exact_sentences": 1
+      }
+    }
+  },
+  "garden_paths": [
+    {
+      "id": "adv-001",
+      "construction": "reduced_relative",
+      "gold": "the horse raced past the barn <b2> fell <b3>",
+      "rationale": "raced heads a reduced relative, so the break closes the subject and blocks the main-verb reading",
+      "rules": "the horse raced past the barn fell <b3>",
+      "rules_match": false,
+      "model": "the horse raced past the barn fell <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-002",
+      "construction": "reduced_relative",
+      "gold": "the man returned to his house <b2> was arrested <b3>",
+      "rationale": "returned is a participle modifying man, and the break marks where the subject ends",
+      "rules": "the man returned to his house <b2> was arrested <b3>",
+      "rules_match": true,
+      "model": "the man returned to his house was arrested <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-003",
+      "construction": "reduced_relative",
+      "gold": "the florist sent the flowers <b2> was pleased <b3>",
+      "rationale": "sent is passive inside the subject, so the break has to precede the real main verb",
+      "rules": "the florist sent the flowers was pleased <b3>",
+      "rules_match": false,
+      "model": "the florist sent the flowers was pleased <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-004",
+      "construction": "reduced_relative",
+      "gold": "the defendant examined by the lawyer <b2> turned out to be unreliable <b3>",
+      "rationale": "the by-phrase makes the reduced relative unambiguous, and the break closes it",
+      "rules": "the defendant <b2> examined by the lawyer <b2> turned out to be unreliable <b3>",
+      "rules_match": false,
+      "model": "the defendant examined by the lawyer <b2> turned out to be unreliable <b3>",
+      "model_match": true
+    },
+    {
+      "id": "adv-005",
+      "construction": "reduced_relative",
+      "gold": "the boat floated down the river <b2> sank <b3>",
+      "rationale": "floated is a participle, so the break separates the modified subject from sank",
+      "rules": "the boat floated down the river sank <b3>",
+      "rules_match": false,
+      "model": "the boat floated down the river sank <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-006",
+      "construction": "reduced_relative",
+      "gold": "the student given the answers <b2> cheated <b3>",
+      "rationale": "given heads a reduced relative and the break closes the subject before cheated",
+      "rules": "the student given the answers cheated <b3>",
+      "rules_match": false,
+      "model": "the student given the answers cheated <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-007",
+      "construction": "reduced_relative",
+      "gold": "the soldiers marched across the field <b2> were exhausted <b3>",
+      "rationale": "marched is a participle here, so the break precedes the finite verb",
+      "rules": "the soldiers marched across the field were exhausted <b3>",
+      "rules_match": false,
+      "model": "the soldiers marched across the field were exhausted <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-008",
+      "construction": "reduced_relative",
+      "gold": "the woman brought the sandwiches <b2> left early <b3>",
+      "rationale": "brought modifies woman, and the break keeps left early as the matrix predicate",
+      "rules": "the woman brought the sandwiches left early <b3>",
+      "rules_match": false,
+      "model": "the woman brought the sandwiches left early <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-009",
+      "construction": "reduced_relative",
+      "gold": "the coach smiled at the player <b2> tossed the frisbee <b3>",
+      "rationale": "smiled at the player is a reduced relative on coach, so the break precedes tossed",
+      "rules": "the coach <b2> smiled at the player <b2> tossed the frisbee <b3>",
+      "rules_match": false,
+      "model": "the coach smiled at the player tossed the frisbee <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-010",
+      "construction": "reduced_relative",
+      "gold": "the experienced soldiers warned about the dangers <b2> conducted the midnight raid <b3>",
+      "rationale": "warned about the dangers modifies soldiers, and the break closes that long subject",
+      "rules": "the experienced soldiers warned about the dangers conducted the midnight raid <b3>",
+      "rules_match": false,
+      "model": "the experienced soldiers warned about the dangers conducted the midnight raid <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-011",
+      "construction": "np_z",
+      "gold": "while the man hunted <b2> the deer ran into the woods <b3>",
+      "rationale": "hunted is intransitive here, so the break stops the deer being taken as its object",
+      "rules": "while the man hunted the deer <b2> ran into the woods <b3>",
+      "rules_match": false,
+      "model": "while the man hunted the deer ran into the woods <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-012",
+      "construction": "np_z",
+      "gold": "since jay always jogs <b2> a mile seems like a short distance <b3>",
+      "rationale": "jogs closes the subordinate clause, and the break keeps a mile as the matrix subject",
+      "rules": "since jay always jogs a mile <b2> seems like a short distance <b3>",
+      "rules_match": false,
+      "model": "since jay always jogs <b2> a mile seems like a short distance <b3>",
+      "model_match": true
+    },
+    {
+      "id": "adv-013",
+      "construction": "np_z",
+      "gold": "after the child visited <b2> the doctor prescribed a course of antibiotics <b3>",
+      "rationale": "visited ends the subordinate clause, so the break blocks the doctor as its object",
+      "rules": "after the child visited the doctor <b2> prescribed a course of antibiotics <b3>",
+      "rules_match": false,
+      "model": "after the child visited the doctor prescribed a course of antibiotics <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-014",
+      "construction": "np_z",
+      "gold": "before the police stopped <b2> the driver was getting nervous <b3>",
+      "rationale": "stopped is intransitive here and the break prevents the driver being read as its object",
+      "rules": "before the police stopped the driver was getting nervous <b3>",
+      "rules_match": false,
+      "model": "before the police stopped <b2> the driver was getting nervous <b3>",
+      "model_match": true
+    },
+    {
+      "id": "adv-015",
+      "construction": "np_z",
+      "gold": "as the criminal shot <b2> the woman screamed <b3>",
+      "rationale": "shot ends the clause, and the break keeps the woman as subject of screamed",
+      "rules": "as the criminal shot the woman <b2> screamed <b3>",
+      "rules_match": false,
+      "model": "as the criminal shot the woman screamed <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-016",
+      "construction": "np_z",
+      "gold": "whenever the band played <b2> the crowd cheered loudly <b3>",
+      "rationale": "played closes the when-clause, and the break stops the crowd being its object",
+      "rules": "whenever the band played the crowd <b2> cheered loudly <b3>",
+      "rules_match": false,
+      "model": "whenever the band played the crowd cheered loudly <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-017",
+      "construction": "np_z",
+      "gold": "though the boy read <b2> the letter remained on the table <b3>",
+      "rationale": "read ends the concessive clause, so the break keeps the letter out of its object slot",
+      "rules": "though the boy read the letter <b2> remained on the table <b3>",
+      "rules_match": false,
+      "model": "though the boy read the letter remained on the table <b3>",
+      "model_match": false
+    },
+    {
+      "id": "adv-018",
+      "construction": "np_z",
+      "gold": "when the dog scratched <b2> the vet gave it a sedative <b3>",
+      "rationale": "scratched is intransitive here, and the break prevents the vet being taken as its object",
+      "rules": "when the dog scratched the vet <b2> gave it a sedative <b3>",
+      "rules_match": false,
+      "model": "when the dog scratched the vet gave it a sedative <b3>",
+      "model_match": false
+    }
+  ],
+  "rule_firing_libritts": {
+    "b3_utterance_final": 1565,
+    "b3_clause_boundary": 1117,
+    "b2_appositive": 875,
+    "b2_fronted_adverbial": 479,
+    "b2_relative_clause": 1710,
+    "b2_long_subject": 918,
+    "b2_list_item": 695
+  },
+  "rule_firing_adversarial": {
+    "b3_utterance_final": 60,
+    "b3_clause_boundary": 1,
+    "b2_appositive": 8,
+    "b2_fronted_adverbial": 16,
+    "b2_relative_clause": 8,
+    "b2_long_subject": 19,
+    "b2_list_item": 4
+  },
+  "speed": {
+    "rules": {
+      "tokens_per_second": 1299,
+      "ms_per_utterance": 43.65
+    },
+    "model": {
+      "tokens_per_second": 461,
+      "ms_per_utterance": 123.08
+    },
+    "model+emphasis": {
+      "tokens_per_second": 349,
+      "ms_per_utterance": 162.64
+    },
+    "_meta": {
+      "utterances": 300,
+      "tokens": 17014,
+      "device": "cpu"
+    }
+  },
+  "emphasis_adversarial": [
+    {
+      "id": "adv-001",
+      "construction": "reduced_relative",
+      "text": "the horse raced past the barn *fell* <b3>",
+      "emphasis": {
+        "fell": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-002",
+      "construction": "reduced_relative",
+      "text": "the man returned to his *house* <b2> was *arrested* <b3>",
+      "emphasis": {
+        "house": "emph_nuclear",
+        "arrested": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-011",
+      "construction": "np_z",
+      "text": "while the man hunted the *deer* <b2> ran into the *woods* <b3>",
+      "emphasis": {
+        "deer": "emph_nuclear",
+        "woods": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-012",
+      "construction": "np_z",
+      "text": "since jay always jogs a *mile* <b2> seems like a short *distance* <b3>",
+      "emphasis": {
+        "mile": "emph_nuclear",
+        "distance": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-019",
+      "construction": "long_subject",
+      "text": "the *man* <b2> who came to dinner last *night* <b2> left his umbrella in the *hall* <b3>",
+      "emphasis": {
+        "man": "emph_nuclear",
+        "night": "emph_nuclear",
+        "hall": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-020",
+      "construction": "long_subject",
+      "text": "the very tall woman standing by the *door* <b2> *waved* at us <b3>",
+      "emphasis": {
+        "door": "emph_nuclear",
+        "waved": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-027",
+      "construction": "coordination",
+      "text": "she went *home* <b3> and he stayed at the *office* <b3>",
+      "emphasis": {
+        "home": "emph_nuclear",
+        "office": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-028",
+      "construction": "coordination",
+      "text": "i spoke to the manager and the assistant manager was there *too* <b3>",
+      "emphasis": {
+        "too": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-035",
+      "construction": "appositive",
+      "text": "my *brother* <b2> the doctor said it was nothing *serious* <b3>",
+      "emphasis": {
+        "brother": "emph_nuclear",
+        "serious": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-036",
+      "construction": "appositive",
+      "text": "doctor *lee* <b2> the head of *cardiology* <b2> will see you *now* <b3>",
+      "emphasis": {
+        "lee": "emph_nuclear",
+        "cardiology": "emph_nuclear",
+        "now": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-043",
+      "construction": "fronted_pp",
+      "text": "in the middle of the *night* <b2> the phone *rang* <b3>",
+      "emphasis": {
+        "night": "emph_nuclear",
+        "rang": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-044",
+      "construction": "fronted_pp",
+      "text": "after a long and difficult *negotiation* <b2> the two sides shook *hands* <b3>",
+      "emphasis": {
+        "negotiation": "emph_nuclear",
+        "hands": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-051",
+      "construction": "non_punctuation_break",
+      "text": "the man in the grey *coat* <b2> is my *uncle* <b3>",
+      "emphasis": {
+        "coat": "emph_nuclear",
+        "uncle": "emph_nuclear"
+      }
+    },
+    {
+      "id": "adv-052",
+      "construction": "non_punctuation_break",
+      "text": "what i want to *know* <b2> is why nobody *told* me <b3>",
+      "emphasis": {
+        "know": "emph_nuclear",
+        "told": "emph_nuclear"
+      }
+    },
+    {
+      "id": "probe-01",
+      "construction": "contrastive probe",
+      "text": "i did not *order* the *fish* <b3>",
+      "emphasis": {
+        "order": "emph_negation_focus",
+        "fish": "emph_nuclear"
+      }
+    },
+    {
+      "id": "probe-02",
+      "construction": "contrastive probe",
+      "text": "she took the *train* rather than the *bus* <b3>",
+      "emphasis": {
+        "train": "emph_rather_than",
+        "bus": "emph_rather_than"
+      }
+    },
+    {
+      "id": "probe-03",
+      "construction": "contrastive probe",
+      "text": "we went to the *museum* instead of the *park* <b3>",
+      "emphasis": {
+        "museum": "emph_rather_than",
+        "park": "emph_rather_than"
+      }
+    },
+    {
+      "id": "probe-04",
+      "construction": "contrastive probe",
+      "text": "he wanted not the *money* but the *credit* <b3>",
+      "emphasis": {
+        "money": "emph_contrastive_but",
+        "credit": "emph_contrastive_but"
+      }
+    },
+    {
+      "id": "probe-05",
+      "construction": "contrastive probe",
+      "text": "they never *asked* for *permission* <b3>",
+      "emphasis": {
+        "asked": "emph_negation_focus",
+        "permission": "emph_nuclear"
+      }
+    }
+  ]
+}

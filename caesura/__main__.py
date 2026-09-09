@@ -35,6 +35,17 @@ def _print_human(result) -> None:
 
 
 def main(argv=None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+
+    # --eval hands the whole remaining command line to the evaluation parser.
+    # It cannot go through the parser below, whose positional `text` takes
+    # nargs="*" and would swallow the value of any flag it does not know.
+    if "--eval" in argv:
+        from .evaluate import main as eval_main
+
+        argv.remove("--eval")
+        return eval_main(argv)
+
     ap = argparse.ArgumentParser(
         prog="caesura",
         description="Predict phrase breaks and emphasis on punctuation-free text",
@@ -44,16 +55,12 @@ def main(argv=None) -> int:
     ap.add_argument("--model", default=None, help="local dir or Hub id for System B")
     ap.add_argument("--pretty", action="store_true", help="human-readable instead of JSON")
     ap.add_argument("--no-emphasis", action="store_true")
-    ap.add_argument("--eval", action="store_true", help="run the full evaluation instead")
-    args, rest = ap.parse_known_args(argv)
-
-    if args.eval:
-        from .evaluate import main as eval_main
-
-        forwarded = list(rest)
-        if args.model:
-            forwarded += ["--model", args.model]
-        return eval_main(forwarded)
+    ap.add_argument(
+        "--eval",
+        action="store_true",
+        help="run the full evaluation instead; remaining flags go to caesura.evaluate",
+    )
+    args = ap.parse_args(argv)
 
     text = " ".join(args.text) if args.text else sys.stdin.read()
     if not text.strip():

@@ -158,3 +158,47 @@ def test_meta_reports_the_system_and_size():
     assert result["meta"]["n_tokens"] == 16
     assert result["meta"]["seconds"] >= 0
     assert len(result["meta"]["breaks"]) == len(result["meta"]["words"]) == 16
+
+
+# --------------------------------------------------------------------------
+# CLI
+# --------------------------------------------------------------------------
+
+
+def test_cli_prints_the_stage_result_as_json(capsys):
+    from caesura.__main__ import main
+
+    assert main(["the phone rang"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["stage"] == "caesura"
+    assert payload["output"].endswith("<b3>")
+
+
+def test_cli_pretty_prints_the_marked_up_text(capsys):
+    from caesura.__main__ import main
+
+    assert main(["--pretty", "the phone rang"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("the phone *rang* <b3>")
+    assert "b3_utterance_final" in out
+
+
+def test_cli_forwards_unknown_flags_to_the_evaluator():
+    """``--eval`` must not let the positional text argument eat flag values."""
+    from caesura.__main__ import main
+
+    seen = {}
+
+    def fake_eval(argv):
+        seen["argv"] = list(argv)
+        return 0
+
+    import caesura.evaluate as evaluate_mod
+
+    real = evaluate_mod.main
+    evaluate_mod.main = fake_eval
+    try:
+        assert main(["--eval", "--limit", "20", "--speed-n", "10"]) == 0
+    finally:
+        evaluate_mod.main = real
+    assert seen["argv"] == ["--limit", "20", "--speed-n", "10"]

@@ -337,9 +337,10 @@ favoured reading says a constituent ends:
 
 The parser attached "the deer" as the object of "hunted", `b2_long_subject` saw
 a subject ending at "deer", and the rule closed it there. The system commits to
-the garden path and then makes it audible. Six of the eight NP/Z sentences come
-out this way, which is where most of System A's 7 spurious breaks in that bucket
-come from. This is the failure mode the rule set was expected to have, and it is
+the garden path and then makes it audible. Seven of the eight NP/Z sentences come
+out this way, one spurious break each, which is all 7 of System A's spurious
+breaks in that bucket. This is the failure mode the rule set was expected to
+have, and it is
 the one that would be most damaging in a real voice: a listener hearing that
 prosody is being actively steered into the wrong parse.
 
@@ -415,7 +416,10 @@ is a recall-oriented merge and the table shows the price.
 
 ## Emphasis, qualitatively
 
-No gold, so this is a table of what got marked and nothing more.
+No gold, so this is a listing of what got marked and nothing more. Two sentences
+per construction from the adversarial set, then five probes at the end, because
+the adversarial set was written to test breaks and contains no contrastive
+constructions for the three non-default rules to fire on.
 
 | sentence | marked |
 |---|---|

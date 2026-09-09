@@ -1,4 +1,9 @@
-"""Shape of the object the pipeline contract requires, and the canonical case."""
+"""The pipeline contract, and the canonical demo sentence.
+
+The contract says a StageResult is a plain JSON-serialisable dict with no custom
+classes, because a sibling stage parses it without importing this package. These
+tests hold that line.
+"""
 
 import json
 
@@ -6,79 +11,114 @@ import pytest
 
 from caesura import run
 from caesura.api import SYSTEMS
-from caesura.types import B2, B3, NONE, Decision, StageResult, Token
+from caesura.types import B2, B3, NONE
 
+# The canonical demo sentence as it arrives from upstream, and as it arrives
+# after the normalisation stage has verbalised it.
+CANONICAL_RAW = "I read the 2nd Dr. Lee lead a live band on Reading Rd at 10:30"
 CANONICAL = (
     "i read the second doctor lee lead a live band on reading road at ten thirty"
 )
 
+DECISION_KEYS = {
+    "span", "surface", "result", "kind", "rule", "alternatives", "score", "note",
+}
 
-def test_run_returns_a_stage_result():
+
+def test_stage_result_is_a_plain_dict():
     result = run("the phone rang", system="rules")
-    assert isinstance(result, StageResult)
-    assert result.stage == "caesura"
-    assert all(isinstance(t, Token) for t in result.tokens)
-    assert all(isinstance(d, Decision) for d in result.decisions)
+    assert type(result) is dict
+    assert set(result) == {"stage", "input", "output", "tokens", "decisions", "meta"}
+    assert result["stage"] == "caesura"
 
 
-def test_tokens_are_one_per_normalised_word():
-    result = run("The phone, suddenly, rang!", system="rules")
-    assert [t.text for t in result.tokens] == ["the", "phone", "suddenly", "rang"]
-    assert [t.index for t in result.tokens] == [0, 1, 2, 3]
+def test_stage_result_is_json_serialisable_as_is():
+    result = run(CANONICAL, system="rules")
+    assert json.loads(json.dumps(result)) == result
+
+
+def test_input_is_echoed_verbatim():
+    result = run(CANONICAL_RAW, system="rules")
+    assert result["input"] == CANONICAL_RAW
+
+
+def test_tokens_are_the_whitespace_tokens_of_output():
+    result = run("in the middle of the night the phone rang", system="rules")
+    assert result["tokens"] == result["output"].split()
 
 
 def test_output_uses_the_contract_markup():
     result = run("in the middle of the night the phone rang", system="rules")
-    assert "<b2>" in result.text or "<b3>" in result.text
-    assert result.text.endswith("<b3>")
-    assert "*" in result.text  # at least one emphasised token
+    assert result["output"].endswith("<b3>")
+    assert "<b2>" in result["output"]
+    assert any(t.startswith("*") and t.endswith("*") for t in result["tokens"])
 
 
-def test_break_values_come_from_the_declared_inventory():
+def test_break_markers_come_from_the_declared_inventory():
     result = run(CANONICAL, system="rules")
-    assert set(result.breaks()) <= {NONE, "b1", B2, B3}
+    markers = {t for t in result["tokens"] if t.startswith("<")}
+    assert markers <= {"<b1>", "<b2>", "<b3>"}
 
 
 def test_one_decision_per_inserted_break():
     result = run("in the middle of the night the phone rang", system="rules")
-    breaks = [i for i, t in enumerate(result.tokens) if t.brk != NONE]
-    assert [d.index for d in result.decisions] == breaks
-    for d in result.decisions:
-        assert d.value in ("<b1>", "<b2>", "<b3>")
+    n_breaks = sum(1 for t in result["tokens"] if t.startswith("<b"))
+    assert len(result["decisions"]) == n_breaks
 
 
-def test_every_decision_names_a_rule_and_carries_a_score():
+def test_decisions_have_exactly_the_contract_fields():
     result = run("the man who came to dinner last night left", system="rules")
-    for d in result.decisions:
-        assert d.rule
-        assert d.rule != "rules"  # a named function, not the system name
-        assert d.score == 1.0  # deterministic rule
+    assert result["decisions"]
+    for d in result["decisions"]:
+        assert set(d) == DECISION_KEYS
+        assert d["kind"] == "break"
+        assert isinstance(d["span"], list) and len(d["span"]) == 2
+        assert isinstance(d["rule"], str) and d["rule"]
+        assert isinstance(d["alternatives"], list)
+        assert isinstance(d["score"], float)
+
+
+def test_decision_spans_are_char_offsets_into_the_input():
+    text = "I read the 2nd Dr. Lee lead a live band on Reading Rd at 10:30"
+    result = run(text, system="rules")
+    for d in result["decisions"]:
+        start, end = d["span"]
+        assert text[start:end] == d["surface"]
+
+
+def test_decisions_are_ordered_by_position():
+    result = run("the man who came to dinner last night left his umbrella", system="rules")
+    spans = [d["span"][0] for d in result["decisions"]]
+    assert spans == sorted(spans)
+
+
+def test_every_decision_names_a_rule_function_not_the_system():
+    result = run("the man who came to dinner last night left", system="rules")
+    for d in result["decisions"]:
+        assert d["rule"] not in SYSTEMS
+        assert d["score"] == 1.0  # deterministic rule
+        assert d["alternatives"] == []
+        assert d["note"]
 
 
 def test_incoming_punctuation_is_always_stripped():
     with_punct = run("The phone, suddenly, rang!", system="rules")
     without = run("the phone suddenly rang", system="rules")
-    assert with_punct.normalized_text == without.normalized_text
-    assert with_punct.breaks() == without.breaks()
+    assert with_punct["meta"]["words"] == without["meta"]["words"]
+    assert with_punct["meta"]["breaks"] == without["meta"]["breaks"]
 
 
 def test_upstream_markup_is_stripped():
     chained = run("the *phone* <b2> rang <b3>", system="rules")
-    assert chained.normalized_text == "the phone rang"
+    assert chained["meta"]["words"] == ["the", "phone", "rang"]
 
 
 def test_empty_input_is_a_well_formed_empty_result():
     result = run("   ...  ", system="rules")
-    assert result.tokens == [] and result.decisions == [] and result.text == ""
-
-
-def test_result_serialises_to_json():
-    result = run(CANONICAL, system="rules")
-    payload = json.loads(result.to_json())
-    assert payload["stage"] == "caesura"
-    assert len(payload["tokens"]) == len(result.tokens)
-    for token in payload["tokens"]:
-        assert set(token) == {"text", "index", "brk", "emphasis"}
+    assert result["output"] == ""
+    assert result["tokens"] == []
+    assert result["decisions"] == []
+    assert result["meta"]["n_tokens"] == 0
 
 
 def test_unknown_system_is_rejected():
@@ -87,30 +127,34 @@ def test_unknown_system_is_rejected():
     assert SYSTEMS == ("rules", "model", "both")
 
 
-def test_canonical_sentence_runs_and_is_reported_faithfully():
-    """The canonical Sayso sentence.
+def test_canonical_sentence_runs_in_both_of_its_forms():
+    """The canonical demo sentence.
 
-    The expected reading is <b2> after "lee", <b2> after "band" and <b3> at the
-    end. This test does not assert that System A gets it right, because it does
-    not; it pins the shape of the output and the fact that the sentence is
-    processed at all. What each system actually produces is in the README.
+    The contract expects a break after "Lee" and after "band" and nothing after
+    "the". These assertions pin the shape and the fact that both the raw and the
+    normalised form are processed; they do not assert that System A gets the
+    breaks right, because it does not. What each system actually produces is in
+    the README.
     """
-    result = run(CANONICAL, system="rules")
-    tokens = [t.text for t in result.tokens]
-    assert tokens[-1] == "thirty"
-    assert result.tokens[-1].brk == B3
-    assert len(result.tokens) == 16
-    assert result.decisions[-1].rule == "b3_utterance_final"
+    for text, last in ((CANONICAL_RAW, "30"), (CANONICAL, "thirty")):
+        result = run(text, system="rules")
+        words = result["meta"]["words"]
+        assert words[-1] == last
+        assert result["meta"]["breaks"][-1] == B3
+        assert result["decisions"][-1]["rule"] == "b3_utterance_final"
+        # Nothing after "the", which the contract calls out explicitly.
+        assert result["meta"]["breaks"][words.index("the")] == NONE
 
 
 def test_emphasis_can_be_switched_off():
     result = run(CANONICAL, system="rules", emphasis=False)
-    assert not any(t.emphasis for t in result.tokens)
-    assert result.meta["emphasis"] == {}
+    assert "*" not in result["output"]
+    assert result["meta"]["emphasis"] == {}
 
 
 def test_meta_reports_the_system_and_size():
     result = run(CANONICAL, system="rules")
-    assert result.meta["system"] == "rules"
-    assert result.meta["n_tokens"] == 16
-    assert result.meta["seconds"] >= 0
+    assert result["meta"]["system"] == "rules"
+    assert result["meta"]["n_tokens"] == 16
+    assert result["meta"]["seconds"] >= 0
+    assert len(result["meta"]["breaks"]) == len(result["meta"]["words"]) == 16

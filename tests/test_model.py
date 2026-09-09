@@ -56,33 +56,35 @@ def test_batched_prediction_matches_single_prediction():
 
 def test_api_model_path_produces_scores_below_one():
     result = run("the man in the grey coat is my uncle", system="model")
-    assert result.meta["system"] == "model"
-    for d in result.decisions:
-        assert d.rule == "model"
-        assert 0.0 < d.score <= 1.0
+    assert result["meta"]["system"] == "model"
+    for d in result["decisions"]:
+        assert d["rule"] == "model"
+        assert 0.0 < d["score"] <= 1.0
 
 
 def test_both_records_the_other_systems_choice():
     result = run("the man who came to dinner last night left", system="both")
-    assert result.meta["system"] == "both"
-    assert "rules_labels" in result.meta and "model_labels" in result.meta
-    disagreements = [d for d in result.decisions if d.alternatives]
-    for d in disagreements:
-        alt = d.alternatives[0]
-        assert alt.system in ("rules", "model")
-        assert alt.value in ("<none>", "<b2>", "<b3>")
-        assert alt.value != d.value
+    assert result["meta"]["system"] == "both"
+    assert "rules_breaks" in result["meta"] and "model_breaks" in result["meta"]
+    for d in result["decisions"]:
+        if not d["alternatives"]:
+            assert d["rule"].startswith("consensus:")
+            continue
+        alt = d["alternatives"][0]
+        assert alt["system"] in ("rules", "model")
+        assert alt["result"] != d["result"]
+        assert set(alt) >= {"result", "score"}
 
 
 def test_both_is_the_union_of_the_two_systems():
     text = "the man who came to dinner last night left his umbrella in the hall"
-    rules = run(text, system="rules").breaks()
-    model = run(text, system="model").breaks()
-    both = run(text, system="both").breaks()
+    rules = run(text, system="rules")["meta"]["breaks"]
+    model = run(text, system="model")["meta"]["breaks"]
+    both = run(text, system="both")["meta"]["breaks"]
     for r, m, b in zip(rules, model, both):
         assert (b != NONE) == (r != NONE or m != NONE)
 
 
 def test_empty_input_on_the_model_path():
     result = run("!!!", system="model")
-    assert result.tokens == [] and result.decisions == []
+    assert result["tokens"] == [] and result["decisions"] == []

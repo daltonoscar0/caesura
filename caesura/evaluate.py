@@ -25,7 +25,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from .api import _merge
 from .data import Example, load_adversarial, read_jsonl
 from .rules import apply as apply_rules
-from .rules import get_nlp
+from .rules import RULE_NAMES, get_nlp
 from .types import B2, B3, NONE
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -158,19 +158,25 @@ def final_only(example: Example) -> List[str]:
 
 def predict_all(
     examples: Sequence[Example], model_path: Optional[str] = None, device: str = "cpu"
-) -> Dict[str, List[List[str]]]:
-    """Run every system over ``examples`` once and return their label sequences."""
+) -> Tuple[Dict[str, List[List[str]]], Counter]:
+    """Run every system over ``examples`` once.
+
+    Returns the label sequences per system and a count of how often each rule
+    claimed a boundary, which comes free from the same pass.
+    """
     rules_out = predict_rules_batch(examples)
     model_out = predict_model_batch(examples, model_path, device)
 
     preds: Dict[str, List[List[str]]] = {s: [] for s in SYSTEMS}
+    firing: Counter = Counter()
     for ex, (r_labels, r_names), (m_labels, m_scores) in zip(examples, rules_out, model_out):
         preds["final_only"].append(final_only(ex))
         preds["rules"].append(r_labels)
         preds["model"].append(m_labels)
         merged, _, _ = _merge(r_labels, r_names, m_labels, m_scores)
         preds["both"].append(merged)
-    return preds
+        firing.update(r_names.values())
+    return preds, firing
 
 
 # --------------------------------------------------------------------------
@@ -210,9 +216,12 @@ def error_taxonomy(
 
 
 def rule_firing_counts(examples: Sequence[Example]) -> Counter:
-    """How often each rule actually claims a boundary. Rules that never fire
-    are as much a result as rules that do."""
-    counts: Counter = Counter()
+    """How often each rule claims a boundary, for callers outside ``run_all``.
+
+    A rule that never fires is as much a result as one that does, so every rule
+    is reported with a zero rather than left out.
+    """
+    counts: Counter = Counter({name: 0 for name in RULE_NAMES})
     for _, rule_names in predict_rules_batch(examples):
         counts.update(rule_names.values())
     return counts
@@ -317,21 +326,43 @@ def speed(examples: Sequence[Example], model_path: Optional[str] = None, n: int 
 # --------------------------------------------------------------------------
 
 
+#: Probes for the three contrastive emphasis rules, which the adversarial set
+#: does not exercise because it was written to test breaks, not accent.
+CONTRAST_PROBES = [
+    "i did not order the fish",
+    "she took the train rather than the bus",
+    "we went to the museum instead of the park",
+    "he wanted not the money but the credit",
+    "they never asked for permission",
+]
+
+
 def emphasis_table(examples: Sequence[Example], model_path: Optional[str] = None) -> List[Dict]:
-    """What the emphasis rules mark on the adversarial set. No gold exists."""
+    """What the emphasis rules mark. No gold exists, so this is a listing.
+
+    Two per construction from the adversarial set, so every construction is
+    represented, plus the contrastive probes.
+    """
     from . import api
 
-    rows = []
+    def row(text: str, ident: str, construction: str) -> Dict:
+        result = api.run(text, system="rules")
+        return {
+            "id": ident,
+            "construction": construction,
+            "text": result["output"],
+            "emphasis": result["meta"]["emphasis"],
+        }
+
+    rows: List[Dict] = []
+    seen: Dict[str, int] = defaultdict(int)
     for ex in examples:
-        result = api.run(" ".join(ex.tokens), system="rules")
-        rows.append(
-            {
-                "id": ex.id,
-                "construction": ex.construction,
-                "text": result.text,
-                "emphasis": result.meta["emphasis"],
-            }
-        )
+        if seen[ex.construction] >= 2:
+            continue
+        seen[ex.construction] += 1
+        rows.append(row(" ".join(ex.tokens), ex.id, ex.construction))
+    for i, probe in enumerate(CONTRAST_PROBES, start=1):
+        rows.append(row(probe, f"probe-{i:02d}", "contrastive probe"))
     return rows
 
 
@@ -340,7 +371,9 @@ def emphasis_table(examples: Sequence[Example], model_path: Optional[str] = None
 # --------------------------------------------------------------------------
 
 
-def run_all(model_path: Optional[str] = None, device: str = "cpu") -> Dict:
+def run_all(
+    model_path: Optional[str] = None, device: str = "cpu", limit: int = 0, speed_n: int = 300
+) -> Dict:
     report: Dict = {
         "punctuation_restoration_reference": PUNCTUATION_BASELINES,
         "results": {},
@@ -348,10 +381,15 @@ def run_all(model_path: Optional[str] = None, device: str = "cpu") -> Dict:
 
     adversarial: List[Example] = []
     adversarial_preds: Dict[str, List[List[str]]] = {}
+    libritts: List[Example] = []
+    firing_by_set: Dict[str, Counter] = {}
 
     for name, path in TEST_SETS:
         examples = load_adversarial(path) if name == "adversarial" else read_jsonl(path)
-        preds = predict_all(examples, model_path, device)
+        if limit and name != "adversarial":
+            examples = examples[:limit]
+        preds, firing = predict_all(examples, model_path, device)
+        firing_by_set[name] = firing
         report["results"][name] = {
             "n_utterances": len(examples),
             "n_boundaries": sum(len(ex.tokens) for ex in examples),
@@ -362,14 +400,17 @@ def run_all(model_path: Optional[str] = None, device: str = "cpu") -> Dict:
         }
         if name == "adversarial":
             adversarial, adversarial_preds = examples, preds
+        elif name == "libritts_test":
+            libritts = examples
 
     report["error_taxonomy"] = error_taxonomy(adversarial, adversarial_preds)
     report["garden_paths"] = garden_path_table(adversarial, adversarial_preds)
-    report["rule_firing_libritts"] = dict(
-        rule_firing_counts(read_jsonl(os.path.join(DATA, "test_libritts.jsonl")))
-    )
-    report["rule_firing_adversarial"] = dict(rule_firing_counts(adversarial))
-    report["speed"] = speed(read_jsonl(os.path.join(DATA, "test_libritts.jsonl")), model_path)
+    # Rules that never fire are reported as zeros rather than omitted.
+    for key, source in (("libritts", "libritts_test"), ("adversarial", "adversarial")):
+        counts = Counter({name: 0 for name in RULE_NAMES})
+        counts.update(firing_by_set[source])
+        report[f"rule_firing_{key}"] = dict(counts)
+    report["speed"] = speed(libritts, model_path, n=speed_n)
     report["emphasis_adversarial"] = emphasis_table(adversarial)
     return report
 
@@ -399,9 +440,12 @@ def main(argv=None) -> int:
     ap.add_argument("--model", default=None, help="local dir or Hub id for System B")
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--out", default=os.path.join(OUTPUTS, "eval.json"))
+    ap.add_argument("--limit", type=int, default=0,
+                    help="cap the two corpus test sets, for a quick smoke run")
+    ap.add_argument("--speed-n", type=int, default=300)
     args = ap.parse_args(argv)
 
-    report = run_all(args.model, args.device)
+    report = run_all(args.model, args.device, limit=args.limit, speed_n=args.speed_n)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w") as fh:
         json.dump(report, fh, indent=2)

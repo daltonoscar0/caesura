@@ -2,7 +2,12 @@
 
 import pytest
 
-from caesura.text import labels_from_punctuation, normalize, strip_markup
+from caesura.text import (
+    labels_from_punctuation,
+    normalize,
+    normalize_spans,
+    strip_markup,
+)
 from caesura.types import B2, B3, NONE
 
 
@@ -75,3 +80,38 @@ def test_labels_align_one_to_one_with_tokens():
 
 def test_labels_empty_input():
     assert labels_from_punctuation("") == ([], [])
+
+
+SPAN_CASES = [
+    "I read the 2nd Dr. Lee lead a live band on Reading Rd at 10:30",
+    "The phone, suddenly, rang!",
+    "Well--that is--I don't know; perhaps.",
+    'She cried, "Stop!" and he stopped.',
+    "the *phone* <b2> rang <b3>",
+    "  leading and trailing   space  ",
+]
+
+
+@pytest.mark.parametrize("text", SPAN_CASES)
+def test_normalize_spans_agrees_with_normalize(text):
+    assert [w for w, _, _, _ in normalize_spans(text)] == normalize(text)
+
+
+@pytest.mark.parametrize("text", SPAN_CASES)
+def test_normalize_spans_offsets_point_at_the_input(text):
+    for _, start, end, surface in normalize_spans(text):
+        assert text[start:end] == surface
+        assert 0 <= start < end <= len(text)
+
+
+@pytest.mark.parametrize("text", SPAN_CASES)
+def test_normalize_spans_are_non_overlapping_and_ordered(text):
+    spans = [(s, e) for _, s, e, _ in normalize_spans(text)]
+    assert spans == sorted(spans)
+    for (_, prev_end), (next_start, _) in zip(spans, spans[1:]):
+        assert prev_end <= next_start
+
+
+def test_normalize_spans_on_empty_input():
+    assert normalize_spans("") == []
+    assert normalize_spans("... ?!") == []

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from .types import B2, B3, NONE
 
@@ -34,6 +34,8 @@ _EMPHASIS = re.compile(r"\*([^*]+)\*")
 _APOSTROPHES = "’ʼ´`"
 _WORD_CHARS = re.compile(r"[^a-z0-9']+")
 _MULTISPACE = re.compile(r"\s+")
+#: Whitespace-delimited chunk of the raw input, used to recover char offsets.
+_RAW_CHUNK = re.compile(r"\S+")
 
 
 def strip_markup(text: str) -> str:
@@ -66,6 +68,40 @@ def normalize(text: str) -> List[str]:
 
 def normalized_text(text: str) -> str:
     return " ".join(normalize(text))
+
+
+def normalize_spans(text: str) -> List[Tuple[str, int, int, str]]:
+    """Like :func:`normalize`, but keeps each token's place in the input.
+
+    Returns ``(token, start, end, surface)`` where ``start`` and ``end`` are
+    character offsets into ``text`` as it was received, and ``surface`` is the
+    slice they delimit. The contract wants decision spans expressed against the
+    stage's own input, so the offsets have to survive normalisation.
+    """
+    out: List[Tuple[str, int, int, str]] = []
+    cursor = 0
+    for raw in _RAW_CHUNK.finditer(text):
+        chunk = raw.group(0)
+        words = normalize(chunk)
+        if not words:
+            continue
+        if len(words) == 1:
+            out.append((words[0], raw.start(), raw.end(), chunk))
+            continue
+        # A chunk that normalises to several words (hyphen compounds) is split
+        # by locating each word inside the chunk, case-insensitively.
+        cursor = 0
+        lowered = chunk.lower()
+        for word in words:
+            found = lowered.find(word, cursor)
+            if found < 0:
+                out.append((word, raw.start(), raw.end(), chunk))
+                continue
+            start = raw.start() + found
+            end = start + len(word)
+            out.append((word, start, end, text[start:end]))
+            cursor = found + len(word)
+    return out
 
 
 def _trailing_break(chunk: str) -> str:

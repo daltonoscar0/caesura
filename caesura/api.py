@@ -1,52 +1,43 @@
 """Contract entry point for the Caesura stage.
 
-``run(text, system=...)`` is the only function other stages should call. It
-always strips punctuation from the incoming text before predicting anything:
+``run(text, **opts)`` is the only function other stages should call. It always
+strips punctuation, casing and any upstream markup before predicting anything:
 the premise of the stage is that punctuation will not be there at inference
-time, so letting it leak in would make the numbers a lie.
+time, so letting it leak in would make every number a lie.
 """
 
 from __future__ import annotations
 
 import time
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from . import emphasis as emphasis_mod
 from . import rules as rules_mod
-from .text import normalize
+from .text import normalize_spans
 from .types import (
     B2,
     B3,
-    NONE,
-    Alternative,
-    Decision,
-    StageResult,
-    Token,
     BREAK_TAGS,
-    render,
+    NONE,
+    STAGE,
+    Token,
+    alternative,
+    decision,
+    stage_result,
+    stronger,
 )
 
-STAGE = "caesura"
 SYSTEMS = ("rules", "model", "both")
-
-_STRENGTH = {NONE: 0, "b1": 1, B2: 2, B3: 3}
-
-
-def _stronger(a: str, b: str) -> str:
-    return a if _STRENGTH[a] >= _STRENGTH[b] else b
 
 
 def predict_rules(tokens: Sequence[str], doc=None):
-    labels, rule_by_index, vetoed = rules_mod.apply(tokens, doc=doc)
-    scores = [1.0 if label != NONE else 1.0 for label in labels]
-    return labels, scores, rule_by_index, vetoed
+    return rules_mod.apply(tokens, doc=doc)
 
 
 def predict_model(tokens: Sequence[str], model_path: Optional[str] = None):
     from .model import get_model
 
-    labels, scores = get_model(model_path).predict(tokens)
-    return labels, scores
+    return get_model(model_path).predict(tokens)
 
 
 def _merge(
@@ -57,15 +48,15 @@ def _merge(
 ) -> Tuple[List[str], List[str], List[float]]:
     """Recall-oriented union: take the stronger break at each boundary.
 
-    Where the two systems agree the decision is labelled ``consensus``; where
-    only one fires, that system owns the boundary and the other's choice is
-    recorded as an alternative by the caller.
+    Where the two systems agree the boundary is owned by ``consensus:<rule>``;
+    where only one fires, that system owns it and the caller records the other's
+    choice in ``alternatives``.
     """
     merged: List[str] = []
     owners: List[str] = []
     scores: List[float] = []
     for i, (r, m) in enumerate(zip(rule_labels, model_labels)):
-        best = _stronger(r, m)
+        best = stronger(r, m)
         merged.append(best)
         if best == NONE:
             owners.append("")
@@ -82,12 +73,21 @@ def _merge(
     return merged, owners, scores
 
 
+def _note(rule: str, label: str) -> str:
+    tag = BREAK_TAGS[label]
+    if rule == "model":
+        return f"sequence labeller put {tag} here"
+    if rule.startswith("consensus:"):
+        return f"both systems put {tag} here, rule {rule.split(':', 1)[1]}"
+    return f"rule {rule} put {tag} here"
+
+
 def run(
     text: str,
     system: str = "rules",
     model_path: Optional[str] = None,
     emphasis: bool = True,
-) -> StageResult:
+) -> Dict[str, Any]:
     """Predict prosodic breaks and emphasis for ``text``.
 
     Args:
@@ -96,32 +96,42 @@ def run(
         system: ``"rules"`` (System A), ``"model"`` (System B) or ``"both"``
             (union of the two, with each system's choice recorded).
         model_path: local directory or Hub id for System B.
-        emphasis: set False to skip emphasis marking, which skips the parse on
-            the model-only path. Used by the speed benchmark.
+        emphasis: set False to skip emphasis marking, which also skips the parse
+            on the model-only path. Used by the speed benchmark.
 
     Returns:
-        A :class:`~caesura.types.StageResult`.
+        A StageResult dict as documented in :mod:`caesura.types`.
     """
     if system not in SYSTEMS:
         raise ValueError(f"system must be one of {SYSTEMS}, got {system!r}")
 
     started = time.perf_counter()
-    tokens = normalize(text)
-    normalized = " ".join(tokens)
+    spans = normalize_spans(text)
+    words = [w for w, _, _, _ in spans]
 
-    if not tokens:
-        return StageResult(
-            stage=STAGE,
-            input_text=text,
-            normalized_text="",
-            text="",
-            tokens=[],
-            decisions=[],
-            meta={"system": system, "n_tokens": 0, "seconds": 0.0},
+    if not words:
+        return stage_result(
+            text,
+            [],
+            [],
+            {
+                "system": system,
+                "n_tokens": 0,
+                "seconds": 0.0,
+                "words": [],
+                "breaks": [],
+                "emphasis": {},
+                "vetoed": {},
+            },
         )
 
+    tokens = [
+        Token(text=w, index=i, start=start, end=end, surface=surface)
+        for i, (w, start, end, surface) in enumerate(spans)
+    ]
+
     needs_parse = system in ("rules", "both") or emphasis
-    doc = rules_mod.parse(tokens) if needs_parse else None
+    doc = rules_mod.parse(words) if needs_parse else None
 
     rule_labels: List[str] = []
     rule_names: Dict[int, str] = {}
@@ -130,78 +140,78 @@ def run(
     model_scores: List[float] = []
 
     if system in ("rules", "both"):
-        rule_labels, _, rule_names, vetoed = predict_rules(tokens, doc=doc)
+        rule_labels, rule_names, vetoed = predict_rules(words, doc=doc)
     if system in ("model", "both"):
-        model_labels, model_scores = predict_model(tokens, model_path)
+        model_labels, model_scores = predict_model(words, model_path)
 
     if system == "rules":
         labels = rule_labels
-        owners = [rule_names.get(i, "") for i in range(len(tokens))]
-        scores = [1.0] * len(tokens)
+        owners = [rule_names.get(i, "") for i in range(len(words))]
+        scores = [1.0] * len(words)
     elif system == "model":
         labels = model_labels
         owners = ["model" if label != NONE else "" for label in labels]
         scores = model_scores
     else:
-        labels, owners, scores = _merge(
-            rule_labels, rule_names, model_labels, model_scores
-        )
+        labels, owners, scores = _merge(rule_labels, rule_names, model_labels, model_scores)
 
-    out_tokens = [Token(text=t, index=i, brk=labels[i]) for i, t in enumerate(tokens)]
+    for token, label in zip(tokens, labels):
+        token.brk = label
 
     emphasis_marks: Dict[int, str] = {}
     if emphasis and doc is not None:
         emphasis_marks = emphasis_mod.mark(doc, labels)
         for i in emphasis_marks:
-            out_tokens[i].emphasis = True
+            tokens[i].emphasis = True
 
-    decisions: List[Decision] = []
+    decisions: List[Dict[str, Any]] = []
     for i, label in enumerate(labels):
         if label == NONE:
             continue
-        nxt = tokens[i + 1] if i + 1 < len(tokens) else "</s>"
-        alternatives: List[Alternative] = []
-        if system == "both":
-            if owners[i].startswith("consensus"):
-                pass
-            elif owners[i] == "model":
+        alternatives: List[Dict[str, Any]] = []
+        if system == "both" and not owners[i].startswith("consensus"):
+            if owners[i] == "model":
+                other = rule_labels[i]
                 alternatives.append(
-                    Alternative("rules", BREAK_TAGS.get(rule_labels[i], "<none>"), 1.0,
-                                rule_names.get(i, "no_rule_fired"))
+                    alternative(
+                        f"{words[i]} {BREAK_TAGS[other]}" if other != NONE else words[i],
+                        1.0,
+                        "rules",
+                        rule_names.get(i, "no_rule_fired"),
+                    )
                 )
             else:
+                other = model_labels[i]
                 alternatives.append(
-                    Alternative("model", BREAK_TAGS.get(model_labels[i], "<none>"),
-                                model_scores[i], "model")
+                    alternative(
+                        f"{words[i]} {BREAK_TAGS[other]}" if other != NONE else words[i],
+                        model_scores[i],
+                        "model",
+                        "model",
+                    )
                 )
         decisions.append(
-            Decision(
-                index=i,
-                boundary=f"{tokens[i]} | {nxt}",
-                value=BREAK_TAGS[label],
+            decision(
+                tokens[i],
+                label,
                 rule=owners[i] or system,
-                score=round(float(scores[i]), 4),
+                score=scores[i],
                 alternatives=alternatives,
+                note=_note(owners[i] or system, label),
             )
         )
 
-    meta = {
+    meta: Dict[str, Any] = {
         "system": system,
-        "n_tokens": len(tokens),
+        "n_tokens": len(words),
         "seconds": round(time.perf_counter() - started, 4),
-        "emphasis": {tokens[i]: rule for i, rule in sorted(emphasis_marks.items())},
+        "words": words,
+        "breaks": labels,
+        "emphasis": {words[i]: rule for i, rule in sorted(emphasis_marks.items())},
         "vetoed": {str(i): reason for i, reason in sorted(vetoed.items())},
     }
     if system == "both":
-        meta["rules_labels"] = rule_labels
-        meta["model_labels"] = model_labels
+        meta["rules_breaks"] = rule_labels
+        meta["model_breaks"] = model_labels
 
-    return StageResult(
-        stage=STAGE,
-        input_text=text,
-        normalized_text=normalized,
-        text=render(out_tokens),
-        tokens=out_tokens,
-        decisions=decisions,
-        meta=meta,
-    )
+    return stage_result(text, tokens, decisions, meta)

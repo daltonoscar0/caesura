@@ -8,12 +8,11 @@ from caesura.types import B2, B3, NONE
 
 
 def emphasised(text, system="rules"):
-    result = run(text, system=system)
-    return [t.text for t in result.tokens if t.emphasis]
+    return list(rules_for(text, system))
 
 
-def rules_for(text):
-    return run(text, system="rules").meta["emphasis"]
+def rules_for(text, system="rules"):
+    return run(text, system=system)["meta"]["emphasis"]
 
 
 def test_phrases_split_on_every_break():
@@ -26,13 +25,12 @@ def test_phrases_handle_a_trailing_run_without_a_break():
 
 def test_one_nuclear_accent_per_intonational_phrase():
     result = run("in the middle of the night the phone rang", system="rules")
-    n_phrases = sum(1 for t in result.tokens if t.brk != NONE)
-    assert len(result.emphasis) >= n_phrases
+    n_phrases = sum(1 for b in result["meta"]["breaks"] if b != NONE)
+    assert len(result["meta"]["emphasis"]) >= n_phrases
 
 
 def test_nuclear_accent_falls_on_a_content_word():
-    result = run("the phone rang", system="rules")
-    assert result.emphasis == ["rang"]
+    assert emphasised("the phone rang") == ["rang"]
 
 
 def test_function_words_are_not_accented_by_default():
@@ -52,9 +50,8 @@ def test_rather_than_accents_both_sides():
     assert marks.get("bus") == "emph_rather_than"
 
 
-def test_emphasis_appears_in_the_rendered_text():
-    result = run("the phone rang", system="rules")
-    assert "*rang*" in result.text
+def test_emphasis_appears_in_the_rendered_output():
+    assert "*rang*" in run("the phone rang", system="rules")["output"]
 
 
 def test_emphasis_marks_are_reported_with_their_rule():

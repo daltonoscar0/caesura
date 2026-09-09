@@ -260,6 +260,7 @@ def main(argv=None) -> int:
     ap.add_argument("--device", default="auto")
     ap.add_argument("--max-train", type=int, default=0)
     ap.add_argument("--dev-subsample", type=int, default=500)
+    ap.add_argument("--evals-per-epoch", type=int, default=2)
     args = ap.parse_args(argv)
 
     train(
@@ -274,6 +275,7 @@ def main(argv=None) -> int:
         device=args.device,
         max_train=args.max_train,
         dev_subsample=args.dev_subsample,
+        evals_per_epoch=args.evals_per_epoch,
     )
     return 0
 

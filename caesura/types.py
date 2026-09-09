@@ -1,19 +1,44 @@
-"""Shared types for the Caesura stage of the TTS front end.
+"""The pipeline contract, and the small internal types used to build it.
 
-The pipeline contract is small on purpose: a stage takes a string and returns a
-``StageResult`` that carries (a) the marked-up text, (b) a token-level view of
-what was marked, and (c) one ``Decision`` per edit the stage made, so a later
-stage or a human can audit why a break landed where it did.
+A stage returns a ``StageResult``: a plain, JSON-serialisable dict, not a custom
+class, because a sibling stage has to parse it without importing this package.
+
+    {
+      "stage":     "caesura",
+      "input":     str,              # text this stage received
+      "output":    str,              # text this stage produced, with markup
+      "tokens":    [str, ...],       # whitespace tokens of `output`
+      "decisions": [Decision, ...],  # only where the stage did something
+      "meta":      { ... }           # stage-specific, free-form
+    }
+
+and each decision:
+
+    {
+      "span":         [start, end],  # char offsets into `input`
+      "surface":      str,           # what was there
+      "result":       str,           # what it became
+      "kind":         "break",
+      "rule":         str,           # rule function name, or "model"
+      "alternatives": [{"result": str, "score": float, ...}, ...],
+      "score":        float,
+      "note":         str | None
+    }
+
+``caesura``'s ``output`` is the input tokens with break markers inserted,
+``<b1>`` minor, ``<b2>`` intermediate, ``<b3>`` major or final, and ``*word*``
+for emphasised tokens.
 """
 
 from __future__ import annotations
 
-import json
-from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Sequence
 
-# Break inventory. <b1> is a word-internal / minor juncture and is never
-# predicted here (see README: it is not derivable from punctuation).
+STAGE = "caesura"
+
+# Break inventory. <b1> is a minor juncture and is never predicted here: it is
+# not derivable from punctuation, which is the only supervision available.
 NONE = "none"
 B1 = "b1"
 B2 = "b2"
@@ -24,16 +49,21 @@ LABELS = [NONE, B2, B3]
 LABEL2ID = {label: i for i, label in enumerate(LABELS)}
 ID2LABEL = {i: label for label, i in LABEL2ID.items()}
 
+#: Strength ordering, used when two systems disagree about a boundary.
+STRENGTH = {NONE: 0, B1: 1, B2: 2, B3: 3}
+
 
 @dataclass
 class Token:
-    """One output token plus the prosodic marks attached to it."""
+    """Internal working type. Never appears in a ``StageResult``."""
 
     text: str
     index: int
-    #: Break that follows this token, one of ``none``/``b1``/``b2``/``b3``.
+    start: int
+    end: int
+    surface: str
+    #: Break that follows this token: ``none``/``b1``/``b2``/``b3``.
     brk: str = NONE
-    #: True when the token carries a pitch accent worth rendering.
     emphasis: bool = False
 
     def render(self) -> str:
@@ -43,75 +73,77 @@ class Token:
         return out
 
 
-@dataclass
-class Alternative:
-    """What the other system wanted at this boundary."""
-
-    system: str
-    value: str
-    score: float
-    rule: str
-
-
-@dataclass
-class Decision:
-    """One inserted break, with the evidence behind it."""
-
-    #: Index of the token the break follows.
-    index: int
-    #: Human-readable boundary, ``"band | on"``.
-    boundary: str
-    #: The break that was inserted, e.g. ``"<b2>"``.
-    value: str
-    #: Name of the firing rule, or ``"model"`` for the sequence labeller.
-    rule: str
-    #: Model probability, or 1.0 for a deterministic rule.
-    score: float = 1.0
-    #: The other system's choice at this boundary (only when system="both").
-    alternatives: List[Alternative] = field(default_factory=list)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-
-@dataclass
-class StageResult:
-    """Return value of every stage in the front end."""
-
-    stage: str
-    #: Text exactly as it arrived, before normalisation.
-    input_text: str
-    #: Normalised, punctuation-free text the stage actually operated on.
-    normalized_text: str
-    #: Marked-up output: tokens, ``*emphasis*``, ``<b2>``/``<b3>``.
-    text: str
-    tokens: List[Token]
-    decisions: List[Decision]
-    meta: Dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def emphasis(self) -> List[str]:
-        return [t.text for t in self.tokens if t.emphasis]
-
-    def breaks(self) -> List[str]:
-        """Per-boundary label sequence, one entry per token."""
-        return [t.brk for t in self.tokens]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "stage": self.stage,
-            "input_text": self.input_text,
-            "normalized_text": self.normalized_text,
-            "text": self.text,
-            "tokens": [asdict(t) for t in self.tokens],
-            "decisions": [d.to_dict() for d in self.decisions],
-            "meta": self.meta,
-        }
-
-    def to_json(self, indent: Optional[int] = 2) -> str:
-        return json.dumps(self.to_dict(), indent=indent)
-
-
-def render(tokens: List[Token]) -> str:
-    """Join tokens into the marked-up surface string."""
+def render(tokens: Sequence[Token]) -> str:
+    """Join tokens into the marked-up ``output`` string."""
     return " ".join(t.render() for t in tokens)
+
+
+def stronger(a: str, b: str) -> str:
+    return a if STRENGTH[a] >= STRENGTH[b] else b
+
+
+def alternative(result: str, score: float, system: str, rule: str) -> Dict[str, Any]:
+    """One entry of a decision's ``alternatives`` list.
+
+    ``result`` and ``score`` are what the contract requires; ``system`` and
+    ``rule`` are extra and say which of the two systems wanted it.
+    """
+    return {
+        "result": result,
+        "score": round(float(score), 4),
+        "system": system,
+        "rule": rule,
+    }
+
+
+def decision(
+    token: Token,
+    label: str,
+    rule: str,
+    score: float,
+    alternatives: Optional[List[Dict[str, Any]]] = None,
+    note: Optional[str] = None,
+) -> Dict[str, Any]:
+    """One inserted break, expressed against the stage's own input."""
+    return {
+        "span": [token.start, token.end],
+        "surface": token.surface,
+        "result": f"{token.text} {BREAK_TAGS[label]}",
+        "kind": "break",
+        "rule": rule,
+        "alternatives": alternatives or [],
+        "score": round(float(score), 4),
+        "note": note,
+    }
+
+
+def stage_result(
+    input_text: str,
+    tokens: Sequence[Token],
+    decisions: List[Dict[str, Any]],
+    meta: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Assemble the contract dict."""
+    output = render(tokens)
+    return {
+        "stage": STAGE,
+        "input": input_text,
+        "output": output,
+        "tokens": output.split(),
+        "decisions": decisions,
+        "meta": meta,
+    }
+
+
+def breaks(result: Dict[str, Any]) -> List[str]:
+    """Per-boundary label sequence, one entry per word, from a StageResult."""
+    return list(result["meta"]["breaks"])
+
+
+def words(result: Dict[str, Any]) -> List[str]:
+    """The normalised words, without markup, from a StageResult."""
+    return list(result["meta"]["words"])
+
+
+def emphasised(result: Dict[str, Any]) -> List[str]:
+    return list(result["meta"]["emphasis"])

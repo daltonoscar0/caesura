@@ -7,12 +7,12 @@ name = "caesura"
 version = "0.1.0"
 description = "Phrase-break and emphasis prediction from syntax, on punctuation-free text"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Oscar Dalton" }]
 keywords = ["prosody", "phrase break", "tts", "front end", "text normalisation"]
 classifiers = [
-  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
   "License :: OSI Approved :: MIT License",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]

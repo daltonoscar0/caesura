@@ -40,6 +40,22 @@ CONSTRUCTION_TITLES = {
 }
 
 
+def headline_table(report) -> str:
+    """One compact table for the top of the README: any-break F1 everywhere."""
+    sets = list(report["results"])
+    lines = [
+        "| system | " + " | ".join(SET_TITLES.get(s, s).split(" (")[0] for s in sets) + " |",
+        "|---|" + "---:|" * len(sets),
+    ]
+    for system in ("final_only", "rules", "model", "both"):
+        cells = []
+        for name in sets:
+            block = report["results"][name]["systems"].get(system)
+            cells.append(f"{block['any']['f1']}" if block else "-")
+        lines.append(f"| {SYSTEM_TITLES.get(system, system)} | " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
 def results_tables(report) -> str:
     out = []
     for name, block in report["results"].items():
@@ -123,12 +139,13 @@ def exact_match_table(report) -> str:
 
 def garden_path_table(report) -> str:
     lines = [
-        "| sentence | gold | System A rules | System B model | A | B |",
-        "|---|---|---|---|:-:|:-:|",
+        "| id | type | gold | System A rules | System B model | A ok | B ok |",
+        "|---|---|---|---|---|:-:|:-:|",
     ]
     for row in report["garden_paths"]:
         lines.append(
-            f"| {row['id']} | `{row['gold']}` | `{row['rules']}` | `{row['model']}` "
+            f"| {row['id']} | {CONSTRUCTION_TITLES.get(row['construction'], row['construction'])} "
+            f"| `{row['gold']}` | `{row['rules']}` | `{row['model']}` "
             f"| {'yes' if row['rules_match'] else 'no'} "
             f"| {'yes' if row['model_match'] else 'no'} |"
         )
@@ -173,6 +190,7 @@ def emphasis_table(report, limit: int = 14) -> str:
 
 
 SECTIONS = {
+    "headline": headline_table,
     "results": results_tables,
     "baselines": baseline_table,
     "taxonomy": taxonomy_table,

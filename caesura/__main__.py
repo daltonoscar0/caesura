@@ -1,29 +1,34 @@
 """Command line entry point.
 
     python -m caesura "the man in the grey coat is my uncle"
-    python -m caesura --system both --json "..."
+    python -m caesura --system both --pretty "..."
     python -m caesura --eval
+
+Per the pipeline contract, the default output is the StageResult as JSON on
+stdout. ``--pretty`` prints the human-readable form instead.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 
 from .api import SYSTEMS, run
 
 
 def _print_human(result) -> None:
-    print(result.text)
-    if result.decisions:
+    print(result["output"])
+    decisions = result["decisions"]
+    if decisions:
         print()
-        width = max(len(d.boundary) for d in result.decisions)
-        for d in result.decisions:
-            line = f"  {d.boundary:<{width}}  {d.value}  {d.rule}  {d.score:.3f}"
-            for alt in d.alternatives:
-                line += f"  [{alt.system}={alt.value} {alt.score:.3f} {alt.rule}]"
+        width = max(len(d["surface"]) for d in decisions)
+        for d in decisions:
+            line = f"  {d['surface']:<{width}}  {d['result']}  {d['rule']}  {d['score']:.3f}"
+            for alt in d["alternatives"]:
+                line += f"  [{alt['system']}={alt['result']!r} {alt['score']:.3f}]"
             print(line)
-    emphasis = result.meta.get("emphasis") or {}
+    emphasis = result["meta"].get("emphasis") or {}
     if emphasis:
         print()
         print("  emphasis: " + ", ".join(f"{tok} ({rule})" for tok, rule in emphasis.items()))
@@ -34,10 +39,10 @@ def main(argv=None) -> int:
         prog="caesura",
         description="Predict phrase breaks and emphasis on punctuation-free text",
     )
-    ap.add_argument("text", nargs="*", help="text to mark up")
+    ap.add_argument("text", nargs="*", help="text to mark up; reads stdin if omitted")
     ap.add_argument("--system", default="rules", choices=SYSTEMS)
     ap.add_argument("--model", default=None, help="local dir or Hub id for System B")
-    ap.add_argument("--json", action="store_true", help="emit the full StageResult as JSON")
+    ap.add_argument("--pretty", action="store_true", help="human-readable instead of JSON")
     ap.add_argument("--no-emphasis", action="store_true")
     ap.add_argument("--eval", action="store_true", help="run the full evaluation instead")
     args, rest = ap.parse_known_args(argv)
@@ -60,10 +65,10 @@ def main(argv=None) -> int:
         model_path=args.model,
         emphasis=not args.no_emphasis,
     )
-    if args.json:
-        print(result.to_json())
-    else:
+    if args.pretty:
         _print_human(result)
+    else:
+        print(json.dumps(result, indent=2))
     return 0
 
 

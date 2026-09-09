@@ -19,8 +19,5 @@ data/dev.jsonl
 data/test_libritts.jsonl
 data/test_switchboard.jsonl
 
-# Local agent scratch, not part of the project.
-.claude/
-
 # Run logs; the eval report itself is tracked.
 outputs/train.log

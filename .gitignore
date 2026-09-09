@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.DS_Store
+
+# Model weights live on the Hub, not in git.
+outputs/breaks/
+outputs/smoke/
+
+# Raw corpus downloads, rebuilt by scripts/fetch_data.py.
+data/raw/
+
+# Derived splits, rebuilt by scripts/build_data.py. The adversarial set is
+# hand-written and is tracked.
+data/train.jsonl
+data/dev.jsonl
+data/test_libritts.jsonl
+data/test_switchboard.jsonl
+
+# Local agent scratch, not part of the project.
+.claude/
+
+# Run logs; the eval report itself is tracked.
+outputs/train.log

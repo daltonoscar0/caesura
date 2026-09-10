@@ -21,3 +21,11 @@ data/test_switchboard.jsonl
 
 # Run logs; the eval report itself is tracked.
 outputs/train.log
+CLAUDE.md
+AGENTS.md
+.claude/
+.agentnotes/
+.cursor/
+.mcp.json
+tasks/lessons.md
+tasks/todo.md

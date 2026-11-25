@@ -295,6 +295,15 @@ This one sentence contains most of the report: the rules are limited by the
 parse, the model is limited by the punctuation it was trained on, and neither
 limitation is fixed by combining them.
 
+The split name is the one of those three that is fixable from outside, and
+[`name_spans`](#name_spans) fixes it: the stage upstream knows "Doctor Lee" is a
+name because it still had the capital letters and the abbreviated title, and
+passing that in vetoes the boundary. The two missing internal breaks are not
+fixable that way and remain missing. Lowering `MIN_SUBJECT_LEN` from 5 to 4
+would produce the break after "lee" on this sentence, and that is exactly why it
+has not been done: the floor was chosen against the corpus and should move, if
+it moves, because the corpus says so.
+
 ## The garden-path table
 
 | id | type | gold | System A rules | System B model | A ok | B ok |
@@ -520,11 +529,49 @@ number in this README. The training curve was still rising when the run stopped.
 
 ## API
 
-`caesura.run(text, system="rules" | "model" | "both") -> StageResult`.
+`caesura.run(text, system="rules" | "model" | "both", name_spans=None) -> StageResult`.
 
 Incoming punctuation, casing and any prosody markup from an upstream stage are
 stripped before anything is predicted. That is the whole point of the stage, so
 it is not optional and there is no flag to turn it off.
+
+### `name_spans`
+
+`name_spans=[[start, end], ...]`, character offsets into `text`, marks regions an
+upstream stage has identified as proper names. No break is placed inside one, by
+either system. It defaults to `None`, so every number in this README is scored
+without it.
+
+It is an argument rather than a rule because the cue is not in the text. By the
+time this stage runs, "Doctor Lee" is `doctor lee`: the capitalisation is gone
+and so is the abbreviated title, and nothing here can tell it from two ordinary
+nouns. `_is_vocative` is already the least trustworthy rule in the set for
+exactly that reason. The normaliser upstream still had both cues and tagged the
+span `NAME`, so it reports it.
+
+What it is for is in [the canonical sentence](#the-canonical-sentence) below:
+System B puts `<b3>` between "doctor" and "lee" at 0.404 confidence, and the
+recall-oriented union inherits it because a `b3` beats the rules' no-break. That
+is not a weak prediction, it is a pause inside a name, which is audibly broken
+however the rest of the utterance is phrased.
+
+```console
+$ python -m caesura --pretty --system both \
+    "I read the second Doctor Lee lead a live band on Reading Road at ten thirty"
+i read the second *doctor* <b3> lee lead a live band on reading road at ten *thirty* <b3>
+
+$ python -m caesura --pretty --system both --name-spans "[[18,28],[49,61]]" \
+    "I read the second Doctor Lee lead a live band on Reading Road at ten thirty"
+i read the second doctor lee lead a live band on reading road at ten *thirty* <b3>
+```
+
+A vetoed boundary is recorded in `meta.vetoed` as `name_span` (rules) or
+`model:name_span`, so the suppression is auditable rather than invisible. A
+boundary at the *edge* of a name is untouched: breaking after "Lee" is a
+legitimate prediction, breaking between "Doctor" and "Lee" is not.
+
+This does not fix the two internal breaks the canonical sentence should have and
+does not get; see below for why neither system places them.
 
 A `StageResult` is a plain JSON-serialisable dict, not a class, because a
 sibling stage has to parse it without importing this package.

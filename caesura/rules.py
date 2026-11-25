@@ -300,16 +300,69 @@ def veto_tight_span(doc, tokens, index: int) -> Optional[str]:
 VETOES: List[Callable] = [veto_tight_span]
 
 
+def forbid_name_spans(spans, name_spans) -> Dict[int, str]:
+    """Boundaries that fall inside a proper name, as ``{index: reason}``.
+
+    A break inside "Doctor Lee" or "Reading Road" is not a weak prediction, it
+    is a wrong one: a name is one phonological word however many orthographic
+    words it occupies, and a pause inside it is audibly broken. No amount of
+    sentence-internal evidence should be able to place one.
+
+    Nothing in the text says where the names are, which is why this takes the
+    spans as an argument rather than guessing. On lowercased, punctuation-free
+    input the capitalisation cue is gone, and `_is_vocative` above is already
+    the least trustworthy rule here for exactly that reason. Upstream, though,
+    the normaliser tagged those characters NAME, ADDRESS or STATE while it still
+    had the capitalisation and the abbreviation to go on, and it reports the
+    spans. This is the one piece of information the stage cannot recover for
+    itself and the previous stage already has.
+
+    Args:
+        spans: ``text.normalize_spans`` output for this stage's input, so the
+            offsets below are in the same coordinate system.
+        name_spans: ``[[start, end], ...]`` character offsets into that input.
+
+    Returns:
+        ``{boundary_index: "name_span"}`` for every boundary with a name word on
+        both sides. A boundary at the *edge* of a name is untouched: breaking
+        after "Lee" is fine, breaking between "Doctor" and "Lee" is not.
+    """
+    out: Dict[int, str] = {}
+    if not name_spans:
+        return out
+    for span in name_spans:
+        try:
+            start, end = int(span[0]), int(span[1])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if end <= start:
+            continue
+        inside = [i for i, (_, s, e, _) in enumerate(spans) if s >= start and e <= end]
+        for left, right in zip(inside, inside[1:]):
+            if right == left + 1:
+                out[left] = "name_span"
+    return out
+
+
 # --------------------------------------------------------------------------
 # Driver
 # --------------------------------------------------------------------------
 
 
-def apply(tokens: Sequence[str], doc=None) -> Tuple[List[str], Dict[int, str], Dict[int, str]]:
+def apply(
+    tokens: Sequence[str],
+    doc=None,
+    forbidden: Optional[Dict[int, str]] = None,
+) -> Tuple[List[str], Dict[int, str], Dict[int, str]]:
     """Run the rule set.
 
     Returns ``(labels, rule_by_index, vetoed_by_index)`` where ``labels[i]`` is
     the break after ``tokens[i]``.
+
+    ``forbidden`` is an outside veto: ``{index: reason}`` for boundaries no rule
+    may claim, whatever it has concluded. It carries information this stage
+    cannot derive from the text, and so cannot be expressed as a rule over the
+    parse. See :func:`forbid_name_spans`.
     """
     n = len(tokens)
     labels = [NONE] * n
@@ -327,11 +380,11 @@ def apply(tokens: Sequence[str], doc=None) -> Tuple[List[str], Dict[int, str], D
                 continue
             if labels[i] != NONE:
                 continue
-            reason = None
+            reason = (forbidden or {}).get(i)
             for veto in VETOES:
-                reason = veto(doc, tokens, i)
                 if reason:
                     break
+                reason = veto(doc, tokens, i)
             if reason:
                 vetoed.setdefault(i, f"{rule.__name__}:{reason}")
                 continue

@@ -56,6 +56,14 @@ def main(argv=None) -> int:
     ap.add_argument("--pretty", action="store_true", help="human-readable instead of JSON")
     ap.add_argument("--no-emphasis", action="store_true")
     ap.add_argument(
+        "--name-spans",
+        default=None,
+        metavar="JSON",
+        help='character spans of proper names, e.g. "[[18,28],[49,61]]". No '
+             "break is placed inside one. An upstream normaliser knows these "
+             "and this stage cannot work them out for itself",
+    )
+    ap.add_argument(
         "--eval",
         action="store_true",
         help="run the full evaluation instead; remaining flags go to caesura.evaluate",
@@ -66,11 +74,19 @@ def main(argv=None) -> int:
     if not text.strip():
         ap.error("no text given")
 
+    name_spans = None
+    if args.name_spans:
+        try:
+            name_spans = json.loads(args.name_spans)
+        except json.JSONDecodeError as exc:
+            ap.error(f"--name-spans is not JSON: {exc}")
+
     result = run(
         text,
         system=args.system,
         model_path=args.model,
         emphasis=not args.no_emphasis,
+        name_spans=name_spans,
     )
     if args.pretty:
         _print_human(result)

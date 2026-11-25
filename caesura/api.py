@@ -30,8 +30,8 @@ from .types import (
 SYSTEMS = ("rules", "model", "both")
 
 
-def predict_rules(tokens: Sequence[str], doc=None):
-    return rules_mod.apply(tokens, doc=doc)
+def predict_rules(tokens: Sequence[str], doc=None, forbidden=None):
+    return rules_mod.apply(tokens, doc=doc, forbidden=forbidden)
 
 
 def predict_model(tokens: Sequence[str], model_path: Optional[str] = None):
@@ -87,6 +87,7 @@ def run(
     system: str = "rules",
     model_path: Optional[str] = None,
     emphasis: bool = True,
+    name_spans: Optional[Sequence[Sequence[int]]] = None,
 ) -> Dict[str, Any]:
     """Predict prosodic breaks and emphasis for ``text``.
 
@@ -98,6 +99,13 @@ def run(
         model_path: local directory or Hub id for System B.
         emphasis: set False to skip emphasis marking, which also skips the parse
             on the model-only path. Used by the speed benchmark.
+        name_spans: ``[[start, end], ...]`` character offsets into ``text``
+            that an upstream stage has identified as proper names. No break is
+            placed inside one, by either system. Defaults to none, so every
+            number in the README is unaffected by this argument; the normaliser
+            upstream reports these spans and they are the one cue this stage
+            cannot recover from lowercased, punctuation-free text.
+            See :func:`caesura.rules.forbid_name_spans`.
 
     Returns:
         A StageResult dict as documented in :mod:`caesura.types`.
@@ -139,10 +147,23 @@ def run(
     model_labels: List[str] = []
     model_scores: List[float] = []
 
+    forbidden = rules_mod.forbid_name_spans(spans, name_spans)
+
     if system in ("rules", "both"):
-        rule_labels, rule_names, vetoed = predict_rules(words, doc=doc)
+        rule_labels, rule_names, vetoed = predict_rules(
+            words, doc=doc, forbidden=forbidden
+        )
     if system in ("model", "both"):
         model_labels, model_scores = predict_model(words, model_path)
+        # The model is vetoed here rather than inside `rules.apply`, because it
+        # does not consult the rule set and this is the only place both label
+        # sequences exist. Without it the union would inherit the split name:
+        # the labeller puts <b3> between "doctor" and "lee" at 0.404, the rules
+        # put nothing there, and taking the stronger break takes the b3.
+        for i, reason in forbidden.items():
+            if i < len(model_labels) and model_labels[i] != NONE:
+                vetoed.setdefault(i, f"model:{reason}")
+                model_labels[i] = NONE
 
     if system == "rules":
         labels = rule_labels
@@ -209,6 +230,7 @@ def run(
         "breaks": labels,
         "emphasis": {words[i]: rule for i, rule in sorted(emphasis_marks.items())},
         "vetoed": {str(i): reason for i, reason in sorted(vetoed.items())},
+        "name_spans": [list(s) for s in (name_spans or [])],
     }
     if system == "both":
         meta["rules_breaks"] = rule_labels

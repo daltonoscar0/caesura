@@ -2,6 +2,16 @@
 
 Phrase-break and emphasis prediction from syntax, on text that has no punctuation.
 
+Stage 3 of a three-stage TTS front end. **Try it at
+[oscarpdalton.com/frontend](https://oscarpdalton.com/frontend)**, which shows
+which of the two systems placed each break and marks the ones it refused. The
+chain also measures this stage against a baseline that is not in this
+repository: the breaks you get from written-English punctuation, hand-written
+for all 60 adversarial sentences. It beats both systems on the aggregate and
+recovers none of the minor breaks in the three constructions written English
+does not punctuate — see
+[frontend-demo](https://github.com/daltonoscar0/frontend-demo#stage-3--phrase-breaks).
+
 Phone transcripts and LLM output arrive at a TTS front end without reliable
 punctuation, so the front end has to decide where the voice pauses and what it
 stresses from the words alone. Where a break goes is a syntactic decision, about
